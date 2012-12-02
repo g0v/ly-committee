@@ -1,0 +1,29 @@
+#!/usr/bin/env perl
+use v5.14;
+use WWW::Mechanize;
+use Web::Query;
+use JSON;
+
+my $agent = WWW::Mechanize->new;
+my $json_encoder = JSON->new->pretty;
+
+for my $election (1..8) {
+    $agent->get("http://www.ly.gov.tw/03_leg/0301_main/legList.action");
+    $agent->submit_form(
+        form_name => "legList",
+        fields => { "searchValues[1]" => $election }
+    );
+
+    my $q = Web::Query->new_from_html($agent->content);
+    my $table = $q->find(".leg03_titbg_02 + table");
+    my @names;
+    $table->find("a")->each(
+        sub {
+            push @names, $_->text;
+        }
+    );
+
+    open my $f, ">:encoding(utf8)", "data/election_${election}.json";
+    print $f $json_encoder->encode(\@names);
+    close($f);
+}
